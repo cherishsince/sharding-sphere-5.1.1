@@ -1,5 +1,9 @@
 ## [Ecosystem to Transform Any Database into a Distributed Database System, and Enhance it with Sharding, Elastic Scaling, Encryption Features & More](https://shardingsphere.apache.org/)
 
+    
+    ./mvnw -Dcheckstyle.skip=true -Drat.skip=true -Dmaven.javadoc.skip=true -Djacoco.skip=true -DskipITs -DskipTests install -T1C
+    1
+
 **Official Website:** [https://shardingsphere.apache.org/](https://shardingsphere.apache.org/)
 
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)

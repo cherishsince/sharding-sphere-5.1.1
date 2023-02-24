@@ -47,6 +47,7 @@
         <module>shardingsphere-test</module>
         
         <module>shardingsphere-distribution</module>
+        <module>jdbc-test</module>
     </modules>
     
     <properties>
