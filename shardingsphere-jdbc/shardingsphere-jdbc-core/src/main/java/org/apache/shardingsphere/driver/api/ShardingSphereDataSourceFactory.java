@@ -74,6 +74,7 @@ public final class ShardingSphereDataSourceFactory {
      */
     public static DataSource createDataSource(final String schemaName, final ModeConfiguration modeConfig, 
                                               final Map<String, DataSource> dataSourceMap, final Collection<RuleConfiguration> configs, final Properties props) throws SQLException {
+        // 创建 ShardingSphereDataSource
         return new ShardingSphereDataSource(Strings.isNullOrEmpty(schemaName) ? DefaultSchema.LOGIC_NAME : schemaName, modeConfig, dataSourceMap, configs, props);
     }
     

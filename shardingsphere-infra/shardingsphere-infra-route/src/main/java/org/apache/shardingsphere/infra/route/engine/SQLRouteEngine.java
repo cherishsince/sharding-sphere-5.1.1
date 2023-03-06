@@ -49,7 +49,9 @@ public final class SQLRouteEngine {
      * @return route context
      */
     public RouteContext route(final LogicSQL logicSQL, final ShardingSphereMetaData metaData) {
+        // 1、创建 SQL 路由执行器
         SQLRouteExecutor executor = isNeedAllSchemas(logicSQL.getSqlStatementContext().getSqlStatement()) ? new AllSQLRouteExecutor() : new PartialSQLRouteExecutor(rules, props);
+        // 2、根据 SQL 路由，创建路由上下文
         return executor.route(logicSQL, metaData);
     }
     

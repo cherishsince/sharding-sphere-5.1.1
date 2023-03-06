@@ -45,6 +45,8 @@ public final class DriverStateContext {
      * @return connection
      */
     public static Connection getConnection(final String schemaName, final ContextManager contextManager) {
+        // 创建 ShardingSphere 自己的 jdbc connection
+        // 默认通过 OKDriverState 创建 jdbc connection
         return STATES.get(contextManager.getInstanceContext().getInstance().getState().getCurrentState().name()).getConnection(schemaName, contextManager);
     }
 }

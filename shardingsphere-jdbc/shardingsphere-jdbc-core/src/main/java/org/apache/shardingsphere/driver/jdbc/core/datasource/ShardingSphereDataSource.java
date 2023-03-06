@@ -59,8 +59,11 @@ public final class ShardingSphereDataSource extends AbstractDataSourceAdapter im
     
     public ShardingSphereDataSource(final String schemaName, final ModeConfiguration modeConfig, final Map<String, DataSource> dataSourceMap,
                                     final Collection<RuleConfiguration> ruleConfigs, final Properties props) throws SQLException {
+        // 检查规则配置
         checkRuleConfiguration(schemaName, ruleConfigs);
+        // 框架数据库名字
         this.schemaName = schemaName;
+        // 创建上下文管理器
         contextManager = createContextManager(schemaName, modeConfig, dataSourceMap, ruleConfigs, null == props ? new Properties() : props);
     }
     
@@ -71,18 +74,23 @@ public final class ShardingSphereDataSource extends AbstractDataSourceAdapter im
     
     private ContextManager createContextManager(final String schemaName, final ModeConfiguration modeConfig, final Map<String, DataSource> dataSourceMap,
                                                 final Collection<RuleConfiguration> ruleConfigs, final Properties props) throws SQLException {
+        // 1、获取 GlobalRuleConfiguration 全局配置
         Collection<RuleConfiguration> globalRuleConfigs = ruleConfigs.stream().filter(each -> each instanceof GlobalRuleConfiguration).collect(Collectors.toList());
+        // 2、构建 ContextManager 需要的 parameter
+        // DataSourceProvidedSchemaConfiguration 保存多个数据源，和规则配置
         ContextManagerBuilderParameter parameter = ContextManagerBuilderParameter.builder()
                 .modeConfig(modeConfig)
                 .schemaConfigs(Collections.singletonMap(schemaName, new DataSourceProvidedSchemaConfiguration(dataSourceMap, ruleConfigs)))
                 .globalRuleConfigs(globalRuleConfigs)
                 .props(props)
                 .instanceDefinition(new InstanceDefinition(InstanceType.JDBC)).build();
+        // 3、创建 ContextManager，根据 modal 创建 Cluster、Memory、Fixture、Standalone
         return ContextManagerBuilderFactory.newInstance(modeConfig).build(parameter);
     }
     
     @Override
     public Connection getConnection() {
+        // sharding sphere 重写了 Connection
         return DriverStateContext.getConnection(schemaName, contextManager);
     }
     

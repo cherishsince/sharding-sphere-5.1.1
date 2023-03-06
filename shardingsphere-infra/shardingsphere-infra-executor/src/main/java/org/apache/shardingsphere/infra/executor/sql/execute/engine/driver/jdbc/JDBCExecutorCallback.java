@@ -60,7 +60,9 @@ public abstract class JDBCExecutorCallback<T> implements ExecutorCallback<JDBCEx
     public final Collection<T> execute(final Collection<JDBCExecutionUnit> executionUnits, final boolean isTrunkThread, final Map<String, Object> dataMap) throws SQLException {
         // TODO It is better to judge whether need sane result before execute, can avoid exception thrown
         Collection<T> result = new LinkedList<>();
+        // <1> 循环执行 分组(executionGroup) 里面的 逻辑SQL
         for (JDBCExecutionUnit each : executionUnits) {
+            // <2> 执行每个逻辑SQL，返回流式归并(JDBCStreamQueryResult) 和 内存归并(JDBCMemoryQueryResult)
             T executeResult = execute(each, isTrunkThread, dataMap);
             if (null != executeResult) {
                 result.add(executeResult);
@@ -76,14 +78,22 @@ public abstract class JDBCExecutorCallback<T> implements ExecutorCallback<JDBCEx
      * @see <a href="https://github.com/apache/skywalking/blob/master/docs/en/guides/Java-Plugin-Development-Guide.md#user-content-plugin-development-guide">Plugin Development Guide</a>
      */
     private T execute(final JDBCExecutionUnit jdbcExecutionUnit, final boolean isTrunkThread, final Map<String, Object> dataMap) throws SQLException {
+        // <1>
         SQLExecutorExceptionHandler.setExceptionThrown(isExceptionThrown);
+        // <2>
         DataSourceMetaData dataSourceMetaData = getDataSourceMetaData(jdbcExecutionUnit.getStorageResource().getConnection().getMetaData());
+        // <3> SQL 执行前预留的一个 SIP hook 扩展
         SQLExecutionHook sqlExecutionHook = new SPISQLExecutionHook();
         try {
+            // <4>
             SQLUnit sqlUnit = jdbcExecutionUnit.getExecutionUnit().getSqlUnit();
+            // <5> 执行 SIP hook
             sqlExecutionHook.start(jdbcExecutionUnit.getExecutionUnit().getDataSourceName(), sqlUnit.getSql(), sqlUnit.getParameters(), dataSourceMetaData, isTrunkThread, dataMap);
+            // <6> 执行 SQL，返回流式归并(JDBCStreamQueryResult) 和 内存归并(JDBCMemoryQueryResult)
             T result = executeSQL(sqlUnit.getSql(), jdbcExecutionUnit.getStorageResource(), jdbcExecutionUnit.getConnectionMode());
+            // <7> SQL 执行前预留的一个 SIP hook 扩展 (成功)
             sqlExecutionHook.finishSuccess();
+            //
             finishReport(dataMap, jdbcExecutionUnit);
             return result;
         } catch (final SQLException ex) {

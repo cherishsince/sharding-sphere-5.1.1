@@ -203,19 +203,26 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
                 resetParameters();
                 return statements.iterator().next().executeQuery();
             }
+            // 1、清理 statements、parameterSets
             clearPrevious();
+            // 2、创建逻辑 sql
             LogicSQL logicSQL = createLogicSQL();
+            // 3、traffic 是限流功能实现
             trafficContext = getTrafficContext(logicSQL);
+            // 4、匹配成功，走限流流程
             if (trafficContext.isMatchTraffic()) {
                 JDBCExecutionUnit executionUnit = createTrafficExecutionUnit(trafficContext, logicSQL);
                 return executor.getTrafficExecutor().execute(executionUnit, (statement, sql) -> ((PreparedStatement) statement).executeQuery());
             }
             // TODO move federation route logic to binder
             executionContext = createExecutionContext(logicSQL);
+            // 6、判断是否是联合
             if (executionContext.getRouteContext().isFederated()) {
                 return executeFederationQuery(logicSQL);
             }
+            // 7、执行查询
             List<QueryResult> queryResults = executeQuery0();
+            // 8、结果归并
             MergedResult mergedResult = mergeQuery(queryResults);
             result = new ShardingSphereResultSet(getShardingSphereResultSet(), mergedResult, this, executionContext);
         } catch (SQLException ex) {
@@ -247,7 +254,9 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
     }
     
     private TrafficContext createTrafficContext(final LogicSQL logicSQL) {
+        // 1、获取当前实例应用上下文
         InstanceContext instanceContext = connection.getContextManager().getInstanceContext();
+        // 2、逻辑 Sql 路由
         return null != trafficRule && !trafficRule.getStrategyRules().isEmpty() 
                 ? new TrafficEngine(trafficRule, instanceContext).dispatch(logicSQL, connection.isHoldTransaction()) : new TrafficContext();
     }
@@ -268,12 +277,16 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
     }
     
     private List<QueryResult> executeQuery0() throws SQLException {
+        // <1> 如果元信息的rules里面有RawExecutionRule子类配置的，目前没有看到RawExecutionRule实现
         if (hasRawExecutionRule()) {
             return executor.getRawExecutor().execute(createRawExecutionGroupContext(), executionContext.getLogicSQL(),
                     new RawSQLExecutorCallback()).stream().map(each -> (QueryResult) each).collect(Collectors.toList());
         }
+        // <2> 需要执行的逻辑SQL，根据数据元分组 db1-> sql1、sql2
         ExecutionGroupContext<JDBCExecutionUnit> executionGroupContext = createExecutionGroupContext();
+        // <3> 缓存执行的逻辑SQL分组，以及逻辑SQL
         cacheStatements(executionGroupContext.getInputGroups());
+        // <4> 执行 query 查询
         return executor.getRegularExecutor().executeQuery(executionGroupContext, executionContext.getLogicSQL(),
                 new PreparedStatementExecuteQueryCallback(metaDataContexts.getMetaData(connection.getSchema()).getResource().getDatabaseType(), sqlStatement,
                         SQLExecutorExceptionHandler.isExceptionThrown()));
@@ -465,9 +478,12 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
     }
     
     private ExecutionContext createExecutionContext(final LogicSQL logicSQL) {
+        // 1、sql 检查
         SQLCheckEngine.check(logicSQL.getSqlStatementContext().getSqlStatement(), logicSQL.getParameters(), 
                 metaDataContexts.getMetaData(connection.getSchema()).getRuleMetaData().getRules(), connection.getSchema(), metaDataContexts.getMetaDataMap(), null);
+        // 2、创建 执行上下文
         ExecutionContext result = kernelProcessor.generateExecutionContext(logicSQL, metaDataContexts.getMetaData(connection.getSchema()), metaDataContexts.getProps());
+        // 3、
         findGeneratedKey(result).ifPresent(generatedKey -> generatedValues.addAll(generatedKey.getGeneratedValues()));
         return result;
     }
@@ -475,15 +491,18 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
     private LogicSQL createLogicSQL() {
         List<Object> parameters = new ArrayList<>(getParameters());
         if (sqlStatementContext instanceof ParameterAware) {
-            ((ParameterAware) sqlStatementContext).setUpParameters(parameters);    
+            ((ParameterAware) sqlStatementContext).setUpParameters(parameters);
         }
         return new LogicSQL(sqlStatementContext, sql, parameters);
     }
     
     private MergedResult mergeQuery(final List<QueryResult> queryResults) throws SQLException {
+        // 1、获取 ShardingSphere mateData数据(这个数据是ShardingSphere 内部计算的数据，保存在 logic_db 里面)
         ShardingSphereMetaData metaData = metaDataContexts.getMetaData(connection.getSchema());
+        // 2、创建 合并引擎
         MergeEngine mergeEngine = new MergeEngine(connection.getSchema(), metaData.getResource().getDatabaseType(), metaData.getDefaultSchema(),
                 metaDataContexts.getProps(), metaData.getRuleMetaData().getRules());
+        // 3、开始 结果归并
         return mergeEngine.merge(queryResults, executionContext.getSqlStatementContext());
     }
     

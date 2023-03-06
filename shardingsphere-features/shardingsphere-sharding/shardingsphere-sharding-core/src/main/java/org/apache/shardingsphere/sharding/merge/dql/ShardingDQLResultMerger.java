@@ -60,7 +60,9 @@ public final class ShardingDQLResultMerger implements ResultMerger {
         Map<String, Integer> columnLabelIndexMap = getColumnLabelIndexMap(queryResults.get(0));
         SelectStatementContext selectStatementContext = (SelectStatementContext) sqlStatementContext;
         selectStatementContext.setIndexes(columnLabelIndexMap);
+        // 5、数据归并: 采用什么方式进行数据归并
         MergedResult mergedResult = build(queryResults, selectStatementContext, columnLabelIndexMap, schema);
+        // 6、数据归并: 处理分页数据
         return decorate(queryResults, selectStatementContext, mergedResult);
     }
     
@@ -78,16 +80,20 @@ public final class ShardingDQLResultMerger implements ResultMerger {
     
     private MergedResult build(final List<QueryResult> queryResults, final SelectStatementContext selectStatementContext,
                                final Map<String, Integer> columnLabelIndexMap, final ShardingSphereSchema schema) throws SQLException {
+        // group by 归并
         if (isNeedProcessGroupBy(selectStatementContext)) {
             return getGroupByMergedResult(queryResults, selectStatementContext, columnLabelIndexMap, schema);
         }
+        // Distinct 去重归并
         if (isNeedProcessDistinctRow(selectStatementContext)) {
             setGroupByForDistinctRow(selectStatementContext);
             return getGroupByMergedResult(queryResults, selectStatementContext, columnLabelIndexMap, schema);
         }
+        // order by 归并
         if (isNeedProcessOrderBy(selectStatementContext)) {
             return new OrderByStreamMergedResult(queryResults, selectStatementContext, schema);
         }
+        // 迭代器归并
         return new IteratorStreamMergedResult(queryResults);
     }
     
@@ -119,10 +125,14 @@ public final class ShardingDQLResultMerger implements ResultMerger {
     }
     
     private MergedResult decorate(final List<QueryResult> queryResults, final SelectStatementContext selectStatementContext, final MergedResult mergedResult) throws SQLException {
+        //
+        // 处理分页数据(分页会将数据全部查出来，通过程序分页返回)
         PaginationContext paginationContext = selectStatementContext.getPaginationContext();
+        // 1、判断是否存在分页，没有分页或者结果就1个，就直接返回
         if (!paginationContext.isHasPagination() || 1 == queryResults.size()) {
             return mergedResult;
         }
+        // 2、获取数据库类型，通过不同数据库类型，进行分页处理
         String trunkDatabaseName = DatabaseTypeRegistry.getTrunkDatabaseType(databaseType.getName()).getName();
         if ("MySQL".equals(trunkDatabaseName) || "PostgreSQL".equals(trunkDatabaseName) || "openGauss".equals(trunkDatabaseName)) {
             return new LimitDecoratorMergedResult(mergedResult, paginationContext);

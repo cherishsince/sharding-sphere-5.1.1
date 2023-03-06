@@ -75,8 +75,11 @@ public final class DriverJDBCExecutor {
     public List<QueryResult> executeQuery(final ExecutionGroupContext<JDBCExecutionUnit> executionGroupContext,
                                           final LogicSQL logicSQL, final ExecuteQueryCallback callback) throws SQLException {
         try {
+            // <1> 初始化...执行处理引擎
             ExecuteProcessEngine.initialize(logicSQL, executionGroupContext, metaDataContexts.getProps());
+            // <2> 通过 JDBC 执行器，执行查询
             List<QueryResult> result = jdbcExecutor.execute(executionGroupContext, callback);
+            // <3> 执行处理引擎，执行完成
             ExecuteProcessEngine.finish(executionGroupContext.getExecutionID());
             return result;
         } finally {

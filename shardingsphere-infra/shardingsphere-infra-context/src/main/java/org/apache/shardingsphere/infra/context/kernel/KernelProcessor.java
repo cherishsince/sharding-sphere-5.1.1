@@ -43,14 +43,20 @@ public final class KernelProcessor {
      * @return execution context
      */
     public ExecutionContext generateExecutionContext(final LogicSQL logicSQL, final ShardingSphereMetaData metaData, final ConfigurationProperties props) {
+        // 1、根据logicSQL 路由
         RouteContext routeContext = route(logicSQL, metaData, props);
+        // 2、重写sql
         SQLRewriteResult rewriteResult = rewrite(logicSQL, metaData, props, routeContext);
+        // 3、创建执行上下文
         ExecutionContext result = createExecutionContext(logicSQL, metaData, routeContext, rewriteResult);
+        // 4、sql日志输出(sql-show 参数)
         logSQL(logicSQL, props, result);
         return result;
     }
     
     private RouteContext route(final LogicSQL logicSQL, final ShardingSphereMetaData metaData, final ConfigurationProperties props) {
+        // 重点：根据 logicSQL 路由到对应的 database、table 上
+        // 在 ShardingSphere 叫做执行单元(ExecutionUnit) 就是 db1.table1、db1.table2、db2...
         return new SQLRouteEngine(metaData.getRuleMetaData().getRules(), props).route(logicSQL, metaData);
     }
     

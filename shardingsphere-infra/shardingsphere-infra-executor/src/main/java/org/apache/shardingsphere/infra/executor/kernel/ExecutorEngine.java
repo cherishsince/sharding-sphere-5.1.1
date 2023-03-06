@@ -75,15 +75,19 @@ public final class ExecutorEngine implements AutoCloseable {
      */
     public <I, O> List<O> execute(final ExecutionGroupContext<I> executionGroupContext,
                                   final ExecutorCallback<I, O> firstCallback, final ExecutorCallback<I, O> callback, final boolean serial) throws SQLException {
+        // <1> 如果执行组为空，代码没有执行单元，直接返回空列表
         if (executionGroupContext.getInputGroups().isEmpty()) {
             return Collections.emptyList();
         }
+        // <2> 执行模式，串行执行 serialExecute、并行执行 parallelExecute
         return serial ? serialExecute(executionGroupContext.getInputGroups().iterator(), firstCallback, callback)
                 : parallelExecute(executionGroupContext.getInputGroups().iterator(), firstCallback, callback);
     }
     
     private <I, O> List<O> serialExecute(final Iterator<ExecutionGroup<I>> executionGroups, final ExecutorCallback<I, O> firstCallback, final ExecutorCallback<I, O> callback) throws SQLException {
+        // <1> 获取第一个执行但愿
         ExecutionGroup<I> firstInputs = executionGroups.next();
+        // <2> 同步执行，回调 firstCallback 方法
         List<O> result = new LinkedList<>(syncExecute(firstInputs, null == firstCallback ? callback : firstCallback));
         while (executionGroups.hasNext()) {
             result.addAll(syncExecute(executionGroups.next(), callback));
@@ -92,8 +96,11 @@ public final class ExecutorEngine implements AutoCloseable {
     }
     
     private <I, O> List<O> parallelExecute(final Iterator<ExecutionGroup<I>> executionGroups, final ExecutorCallback<I, O> firstCallback, final ExecutorCallback<I, O> callback) throws SQLException {
+        // <1> 获取第一个 ExecutionGroup(和串行执行一样)
         ExecutionGroup<I> firstInputs = executionGroups.next();
+        // <2> 异步执行，返回 Future 进行回调
         Collection<ListenableFuture<Collection<O>>> restResultFutures = asyncExecute(executionGroups, callback);
+        // <3> first 采用串行执行，executionGroups 剩余的采用并行执行
         return getGroupResults(syncExecute(firstInputs, null == firstCallback ? callback : firstCallback), restResultFutures);
     }
     
@@ -110,12 +117,16 @@ public final class ExecutorEngine implements AutoCloseable {
     }
     
     private <I, O> ListenableFuture<Collection<O>> asyncExecute(final ExecutionGroup<I> executionGroup, final ExecutorCallback<I, O> callback) {
+        // <1>
         Map<String, Object> dataMap = ExecutorDataMap.getValue();
+        // <2> ExecutorService 线程池，提交任务查询
         return executorServiceManager.getExecutorService().submit(() -> callback.execute(executionGroup.getInputs(), false, dataMap));
     }
     
     private <O> List<O> getGroupResults(final Collection<O> firstResults, final Collection<ListenableFuture<Collection<O>>> restFutures) throws SQLException {
+        // <1> 将 first 返回结果放入 result
         List<O> result = new LinkedList<>(firstResults);
+        // <2> 回调 Future 方法获取数据
         for (ListenableFuture<Collection<O>> each : restFutures) {
             try {
                 result.addAll(each.get());

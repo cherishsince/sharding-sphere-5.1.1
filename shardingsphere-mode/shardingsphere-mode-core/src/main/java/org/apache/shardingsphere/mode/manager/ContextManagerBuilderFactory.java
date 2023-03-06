@@ -43,6 +43,8 @@ public final class ContextManagerBuilderFactory {
      * @return context manager
      */
     public static ContextManagerBuilder newInstance(final ModeConfiguration modeConfig) {
+        // 1、通过 modeConfig 来创建不同的 ContextManager
+        // mode 的实现通过 SIP 机制扩展
         return null == modeConfig
                 ? RequiredSPIRegistry.getRegisteredService(ContextManagerBuilder.class) : TypedSPIRegistry.getRegisteredService(ContextManagerBuilder.class, modeConfig.getType(), new Properties());
     }

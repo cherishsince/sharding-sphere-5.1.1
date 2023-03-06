@@ -31,6 +31,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * ShardingSphere service loader.
+ *
+ * ShardingSphere 负责：
+ * 1、通过 ServiceLoader 加载
+ * 2、增加 Map 缓存功能
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ShardingSphereServiceLoader {
@@ -43,7 +47,10 @@ public final class ShardingSphereServiceLoader {
      * @param serviceInterface service interface
      */
     public static void register(final Class<?> serviceInterface) {
+        // 1、不存在，通过 ServiceLoader 加载并放入缓存
         if (!SERVICES.containsKey(serviceInterface)) {
+            // 1.1 load ServiceLoader SIP 加载
+            // 1.2 加入缓存
             SERVICES.put(serviceInterface, load(serviceInterface));
         }
     }

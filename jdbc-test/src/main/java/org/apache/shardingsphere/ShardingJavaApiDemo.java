@@ -20,10 +20,10 @@ import java.util.Properties;
 /**
  * java api 配置
  */
-public class ShardingJdbcJavaAPI {
+public class ShardingJavaApiDemo {
 
     public static void main(String[] args) throws SQLException {
-         ShardingJdbcJavaAPI shardingJdbcJavaAPI = new ShardingJdbcJavaAPI();
+         ShardingJavaApiDemo shardingJdbcJavaAPI = new ShardingJavaApiDemo();
         // 创建 sharding dataSource
         DataSource dataSource = shardingJdbcJavaAPI.createShardingDataSource();
         // 查询
@@ -57,8 +57,11 @@ public class ShardingJdbcJavaAPI {
         // 打开链接
         Connection connection = null;
         try {
+            // ShardingSphereDataSource 获取 ShardingSphere 自己的 connection
             connection = dataSource.getConnection();
-            PreparedStatement preparedStatement = connection.prepareStatement("select * from t_user");
+            // ShardingSphereConnection 创建 ShardingSphere 自己的 PreparedStatement
+            PreparedStatement preparedStatement = connection.prepareStatement("select name, avg(id) vg from t_user GROUP BY name ORDER BY name desc");
+            // ShardingSpherePreparedStatement 执行查询
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 System.err.println(resultSet.getString(1) + " " + resultSet.getString(2));
